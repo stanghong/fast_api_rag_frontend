@@ -1,0 +1,4 @@
+streamlit==1.26.0  # For the web interface
+pyaudio==0.2.13  # For audio recording and processing
+requests==2.32.0  # For making API requests
+logging  # Built-in Python module; no need to specify in requirements.txt
