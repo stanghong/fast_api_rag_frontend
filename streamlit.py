@@ -1,28 +1,20 @@
+# %%
 import streamlit as st
-import pyaudio
-import wave
-import io
 import requests
 import logging
+import numpy as np
+# import soundfile as sf  # Commented out as it's causing an import error
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API_ENDPOINT = 'http://127.0.0.1:8000/api/combined_voicebot/'  # Replace with your FastAPI URL
-API_ENDPOINT =  'https://fastapirag-production.up.railway.app/api/combined_voicebot/'
+API_ENDPOINT = 'https://fastapirag-production.up.railway.app/api/combined_voicebot/'
+
 # Initialize session state for recording
 if 'audio_buffer' not in st.session_state:
     st.session_state.audio_buffer = None
-
-# Audio recording parameters
-chunk = 1024  # Record in chunks of 1024 samples
-sample_format = pyaudio.paInt16  # 16 bits per sample
-channels = 1
-fs = 44100  # Record at 44100 samples per second
-
-# Input for recording duration
-seconds = st.number_input("Recording duration (seconds):", min_value=1, max_value=60, value=3, step=1)
 
 # Streamlit interface
 st.title("Combined Voicebot with PDF QA")
@@ -33,58 +25,14 @@ pdf_file = st.file_uploader("Upload a PDF", type=["pdf"])
 # Option to record audio or enter text manually
 audio_option = st.radio("Choose input method:", ("Record Audio", "Type Text"))
 
-# Function to record audio
-def record_audio():
-    p = pyaudio.PyAudio()
-    try:
-        stream = p.open(format=sample_format,
-                        channels=channels,
-                        rate=fs,
-                        frames_per_buffer=chunk,
-                        input=True)
-    except Exception as e:
-        st.error(f"Could not open microphone: {e}")
-        return
-
-    frames = []
-
-    st.write("Recording...")
-    for _ in range(0, int(fs / chunk * seconds)):
-        data = stream.read(chunk)
-        frames.append(data)
-    st.write("Recording complete.")
-
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
-
-    # Save the recorded data as a WAV file in memory
-    buffer = io.BytesIO()
-    wf = wave.open(buffer, 'wb')
-    wf.setnchannels(channels)
-    wf.setsampwidth(p.get_sample_size(sample_format))
-    wf.setframerate(fs)
-    wf.writeframes(b''.join(frames))
-    wf.close()
-    buffer.seek(0)
-
-    st.session_state.audio_buffer = buffer
+# Function to record audio using streamlit-webrtc
+def record_audio_with_webrtc():
+    st.warning("Audio recording functionality is currently unavailable. Please use the 'Type Text' option instead.")
 
 # Record audio if selected
 if audio_option == "Record Audio":
     st.header("Record Audio")
-    if st.button("Start Recording"):
-        record_audio()
-
-    # Playback the recorded audio if available
-    if st.session_state.audio_buffer:
-        st.audio(st.session_state.audio_buffer.getvalue(), format='audio/wav')
-        st.download_button(
-            label="Download recorded audio",
-            data=st.session_state.audio_buffer,
-            file_name="recorded_audio.wav",
-            mime="audio/wav"
-        )
+    st.warning("Audio recording functionality is currently unavailable. Please use the 'Type Text' option instead.")
 
 elif audio_option == "Type Text":
     text_input = st.text_area("Enter your text here")
@@ -98,19 +46,13 @@ if st.button("Submit"):
                 data = {}
 
                 if audio_option == "Record Audio":
-                    audio_buffer = st.session_state.get('audio_buffer', None)
-                    if audio_buffer and audio_buffer.getbuffer().nbytes > 0:
-                        audio_buffer.seek(0)
-                        files['audio'] = ("audio.wav", audio_buffer, "audio/wav")
-                        logger.info("Audio file added to the request.")
-                    else:
-                        st.warning("No audio recorded. Please record your question.")
-                        st.stop()
+                    st.warning("Audio recording is currently unavailable. Please use the 'Type Text' option.")
+                    st.stop()
                 elif audio_option == "Type Text" and text_input:
                     data = {"text": text_input}
                     logger.info("Text input added to the request.")
                 else:
-                    st.warning("Please provide either audio input or text input.")
+                    st.warning("Please provide text input.")
                     st.stop()
 
                 response = requests.post(API_ENDPOINT, files=files, data=data, timeout=60)
@@ -145,8 +87,8 @@ if st.button("Submit"):
 st.markdown("""
 ### Instructions:
 1. Upload a PDF file that you want to analyze.
-2. Choose between recording audio or typing text for your question.
-3. If recording audio, click 'Start Recording' to start and stop recording.
+2. Choose the 'Type Text' option for your question.
+3. Enter your question in the text area provided.
 4. Click 'Submit' to process your input and get a response.
 5. If an audio response is generated, you can play it directly or download it.
 """)
